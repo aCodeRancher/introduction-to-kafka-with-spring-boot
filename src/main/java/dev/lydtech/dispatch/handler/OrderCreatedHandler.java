@@ -1,5 +1,6 @@
 package dev.lydtech.dispatch.handler;
 
+import dev.lydtech.dispatch.message.DispatchPreparing;
 import dev.lydtech.dispatch.message.OrderCreated;
 import dev.lydtech.dispatch.service.DispatchService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,10 @@ public class OrderCreatedHandler {
         log.info("Received message: payload: " + payload);
         try {
             dispatchService.process(payload);
+            DispatchPreparing dispatchPreparing =
+                    DispatchPreparing.builder()
+                                    .orderId(payload.getOrderId()).build();
+            dispatchService.prepare(dispatchPreparing);
         } catch (Exception e) {
             log.error("Processing failure", e);
         }
