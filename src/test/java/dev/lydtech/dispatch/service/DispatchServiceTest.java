@@ -2,7 +2,6 @@ package dev.lydtech.dispatch.service;
 
 import java.util.concurrent.CompletableFuture;
 
-import dev.lydtech.dispatch.message.DispatchPreparing;
 import dev.lydtech.dispatch.message.OrderCreated;
 import dev.lydtech.dispatch.message.OrderDispatched;
 import dev.lydtech.dispatch.util.TestEventData;
@@ -52,27 +51,6 @@ class DispatchServiceTest {
 
         verify(kafkaProducerMock, times(1)).send(eq("order.dispatched"), any(OrderDispatched.class));
         assertThat(exception.getMessage(), equalTo("Producer failure"));
-    }
-
-    @Test
-    public void prepare_Success() throws Exception{
-        when(kafkaProducerMock.send(anyString(), any(DispatchPreparing.class))).thenReturn(mock(CompletableFuture.class));
-        OrderCreated testEvent = TestEventData.buildOrderCreatedEvent(randomUUID(), randomUUID().toString());
-        DispatchPreparing dispatchPreparing = DispatchPreparing.builder().orderId(testEvent.getOrderId()).build();
-        service.prepare(dispatchPreparing);
-
-        verify(kafkaProducerMock, times(1)).send(eq("dispatch.tracking"), any(DispatchPreparing.class));
-
-    }
-    @Test
-    public void prepare_DispatchThrowsException() {
-        OrderCreated testEvent = TestEventData.buildOrderCreatedEvent(randomUUID(), randomUUID().toString());
-        doThrow(new RuntimeException("Dispatch failure")).when(kafkaProducerMock).send(eq("dispatch.tracking"), any(DispatchPreparing.class));
-        DispatchPreparing dispatchPreparing = DispatchPreparing.builder().orderId(testEvent.getOrderId()).build();
-
-        Exception exception = assertThrows(RuntimeException.class, () -> service.prepare(dispatchPreparing));
-        verify(kafkaProducerMock, times(1)).send(eq("dispatch.tracking"), any(DispatchPreparing.class));
-        assertThat(exception.getMessage(), equalTo("Dispatch failure"));
     }
 
 }

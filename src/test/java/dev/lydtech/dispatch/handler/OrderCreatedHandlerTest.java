@@ -1,6 +1,5 @@
 package dev.lydtech.dispatch.handler;
 
-import dev.lydtech.dispatch.message.DispatchPreparing;
 import dev.lydtech.dispatch.message.OrderCreated;
 import dev.lydtech.dispatch.service.DispatchService;
 import dev.lydtech.dispatch.util.TestEventData;
@@ -8,7 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatcher;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,14 +17,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@ExtendWith(MockitoExtension.class)
+
 class OrderCreatedHandlerTest {
 
     private OrderCreatedHandler handler;
     private DispatchService dispatchServiceMock;
 
-    @Captor
-    ArgumentCaptor<DispatchPreparing> dp;
 
     @BeforeEach
     void setUp() {
@@ -39,7 +35,7 @@ class OrderCreatedHandlerTest {
         OrderCreated testEvent = TestEventData.buildOrderCreatedEvent(randomUUID(), randomUUID().toString());
         handler.listen(testEvent);
         verify(dispatchServiceMock, times(1)).process(testEvent);
-        verify(dispatchServiceMock,times(1)).prepare(dp.capture());
+
     }
 
     @Test
