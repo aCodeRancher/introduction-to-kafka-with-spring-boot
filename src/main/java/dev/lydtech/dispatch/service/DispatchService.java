@@ -1,7 +1,9 @@
 package dev.lydtech.dispatch.service;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
+import dev.lydtech.dispatch.message.DispatchCompleted;
 import dev.lydtech.dispatch.message.DispatchPreparing;
 import dev.lydtech.dispatch.message.OrderCreated;
 import dev.lydtech.dispatch.message.OrderDispatched;
@@ -20,21 +22,27 @@ public class DispatchService {
     private static final String DISPATCH_TRACKING_TOPIC = "dispatch.tracking";
     private static final String ORDER_DISPATCHED_TOPIC = "order.dispatched";
     private static final UUID APPLICATION_ID = randomUUID();
+
     private final KafkaTemplate<String, Object> kafkaProducer;
 
-    public void process(String key, OrderCreated orderCreated) throws Exception {
+    public void process( OrderCreated orderCreated) throws Exception {
         DispatchPreparing dispatchPreparing = DispatchPreparing.builder()
                 .orderId(orderCreated.getOrderId())
                 .build();
-        kafkaProducer.send(DISPATCH_TRACKING_TOPIC, key, dispatchPreparing).get();
+        kafkaProducer.send(DISPATCH_TRACKING_TOPIC, dispatchPreparing).get();
 
         OrderDispatched orderDispatched = OrderDispatched.builder()
                 .orderId(orderCreated.getOrderId())
                 .processedById(APPLICATION_ID)
                 .notes("Dispatched: " + orderCreated.getItem())
                 .build();
-        kafkaProducer.send(ORDER_DISPATCHED_TOPIC, key, orderDispatched).get();
+        kafkaProducer.send(ORDER_DISPATCHED_TOPIC,   orderDispatched).get();
 
-        log.info("Sent messages: key: " + key + " - orderId: " + orderCreated.getOrderId() + " - processedById: " + APPLICATION_ID);
+
+        DispatchCompleted dispatchCompleted = DispatchCompleted.builder()
+                .orderId(orderCreated.getOrderId())
+                .date(LocalDateTime.now().toString()).build();
+        kafkaProducer.send(DISPATCH_TRACKING_TOPIC,dispatchCompleted).get();
+        log.info( "orderId: " + orderCreated.getOrderId() + " - processedById: " + APPLICATION_ID);
     }
 }
