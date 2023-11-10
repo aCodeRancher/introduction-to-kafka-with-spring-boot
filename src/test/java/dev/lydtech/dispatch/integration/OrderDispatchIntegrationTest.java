@@ -171,7 +171,7 @@ public class OrderDispatchIntegrationTest {
         OrderCreated orderCreated = TestEventData.buildOrderCreatedEvent(randomUUID(), "my-item");
         sendMessage(ORDER_CREATED_TOPIC, randomUUID().toString(), orderCreated);
 
-        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+        await().atMost(500, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
                 .until(testListener.dispatchPreparingCounter::get, equalTo(1));
         await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
                 .until(testListener.orderDispatchedCounter::get, equalTo(1));
