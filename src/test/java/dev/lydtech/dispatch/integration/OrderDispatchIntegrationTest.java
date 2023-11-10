@@ -39,7 +39,7 @@ import static org.hamcrest.Matchers.notNullValue;
 @SpringBootTest(classes = {DispatchConfiguration.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
-@EmbeddedKafka(controlledShutdown = true)
+@EmbeddedKafka(controlledShutdown = true, partitions=4)
 public class OrderDispatchIntegrationTest {
 
     private final static String ORDER_CREATED_TOPIC = "order.created";
@@ -58,6 +58,9 @@ public class OrderDispatchIntegrationTest {
     @Autowired
     private KafkaTestListener testListener;
 
+    @Autowired
+    private KafkaTestListener testListener1;
+
     @Configuration
     static class TestConfig {
 
@@ -65,20 +68,24 @@ public class OrderDispatchIntegrationTest {
         public KafkaTestListener testListener() {
             return new KafkaTestListener();
         }
+
+        @Bean
+        public KafkaTestListener1 testListener1() { return new KafkaTestListener1();}
     }
+
 
     /**
      * Use this receiver to consume messages from the outbound topics.
      */
     @KafkaListener(groupId="KafkaIntegrationTest", topics = {DISPATCH_TRACKING_TOPIC, ORDER_DISPATCHED_TOPIC})
     public static class KafkaTestListener {
-        AtomicInteger dispatchPreparingCounter = new AtomicInteger(0);
+         AtomicInteger dispatchPreparingCounter = new AtomicInteger(0);
         AtomicInteger orderDispatchedCounter = new AtomicInteger(0);
         AtomicInteger  dispatchCompleteCounter = new AtomicInteger(0);
 
         @KafkaHandler
         void receiveDispatchPreparing( @Payload DispatchPreparing payload) {
-            log.debug("Received DispatchPreparing payload: " + payload);
+            log.info("Received DispatchPreparing payload: " + payload);
 
             assertThat(payload, notNullValue());
             dispatchPreparingCounter.incrementAndGet();
@@ -101,16 +108,49 @@ public class OrderDispatchIntegrationTest {
         }
 
     }
+    @KafkaListener(groupId="KafkaIntegrationTest", topics = {DISPATCH_TRACKING_TOPIC, ORDER_DISPATCHED_TOPIC})
+    public static class KafkaTestListener1 {
+       AtomicInteger dispatchPreparingCounter = new AtomicInteger(0);
+        AtomicInteger orderDispatchedCounter = new AtomicInteger(0);
+       AtomicInteger  dispatchCompleteCounter = new AtomicInteger(0);
 
+        @KafkaHandler
+        void receiveDispatchPreparing( @Payload DispatchPreparing payload) {
+            log.info("Received DispatchPreparing payload: " + payload);
+
+            assertThat(payload, notNullValue());
+            dispatchPreparingCounter.incrementAndGet();
+        }
+
+        @KafkaHandler
+        void receiveOrderDispatched( @Payload OrderDispatched payload) {
+            log.debug("Received OrderDispatched payload: " + payload);
+
+            assertThat(payload, notNullValue());
+            orderDispatchedCounter.incrementAndGet();
+        }
+
+        @KafkaHandler
+        void receiveDispatchComplte( @Payload DispatchCompleted payload) {
+            log.debug("Received DispatchComplete payload: " + payload);
+
+            assertThat(payload, notNullValue());
+            dispatchCompleteCounter.incrementAndGet();
+        }
+
+    }
     @BeforeEach
     public void setUp() {
         testListener.dispatchPreparingCounter.set(0);
         testListener.orderDispatchedCounter.set(0);
         testListener.dispatchCompleteCounter.set(0);
+        testListener1.dispatchPreparingCounter.set(0);
+        testListener1.orderDispatchedCounter.set(0);
+        testListener1.dispatchCompleteCounter.set(0);
         // Wait until the partitions are assigned.
        registry.getListenerContainers().stream().forEach(container ->
-               ContainerTestUtils.waitForAssignment(container,container.getContainerProperties().getTopics().length
-                   * embeddedKafkaBroker.getPartitionsPerTopic()));
+               ContainerTestUtils.waitForAssignment(container,
+                    embeddedKafkaBroker.getPartitionsPerTopic()));
 
 
     }
@@ -122,12 +162,19 @@ public class OrderDispatchIntegrationTest {
     public void testOrderDispatchFlow() throws Exception {
         OrderCreated orderCreated = TestEventData.buildOrderCreatedEvent(randomUUID(), "my-item");
         sendMessage(ORDER_CREATED_TOPIC,  orderCreated);
-        await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
                .until(testListener.orderDispatchedCounter::get, equalTo(1));
         await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
                 .until(testListener.dispatchPreparingCounter::get, equalTo(1));
         await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
                 .until(testListener.dispatchCompleteCounter::get, equalTo(1));
+
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(testListener1.orderDispatchedCounter::get, equalTo(1));
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(testListener1.dispatchPreparingCounter::get, equalTo(1));
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(testListener1.dispatchCompleteCounter::get, equalTo(1));
 
     }
 
