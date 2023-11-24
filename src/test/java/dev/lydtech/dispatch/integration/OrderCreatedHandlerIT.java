@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.notNullValue;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @EmbeddedKafka(controlledShutdown = true)
+//for experiment
 public class OrderCreatedHandlerIT {
     private final static String ORDER_CREATED_TOPIC = "order.created";
 
